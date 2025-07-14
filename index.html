@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Estoque - Reagentes</title>
+  <link rel="icon" href="https://cdn.glitch.global/e992bb17-2a27-4582-a4c9-26bd9a2bb6c9/favicon-16x16.png?v=1748953413949" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: NouvelR, NouvelR;font-size:10px; background: #f0f0f0; margin: 0; padding: 0; }
+    .header { background-color: black; color: white; padding: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    .tabs { display: flex; flex-wrap: wrap; }
+    .tabs button { padding: 8px 16px; margin: 5px 5px; background: none; border: 2px solid white; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; font-family: NouvelR; }
+    .summary { display: flex; flex-wrap: wrap; justify-content: normal; align-items: center; padding: 20px; background: white; margin: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); gap: 15px; }
+    .summary .left { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .card { font-size: 20px; font-weight: bold; }
+    .export-btn { padding: 8px 16px; background-color: black; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: NouvelR; }
+    .search-input { padding: 6px; border-radius: 5px; border: 1px solid #ccc; font-size: 12px; font-family: NouvelR; }
+    .container { padding: 0 10px 20px 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+    .product-list { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .product-list h3 { text-align: center; font-size: 16px; }
+    .product { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 10px 0; gap: 8px; }
+    .bar { height: 7px; background: lightgrey; border-radius: 3px; width: 80px; min-width: 60px; }
+    .controls button { font-size: 12px; padding: 4px 8px; border: none; border-radius: 50%; margin-left: 3px; cursor: pointer; }
+    .plus { background: #28a745; color: white; }
+    .minus { background: red; color: white; }
+    .low-stock { background: #ffcccc; border: 1px solid red; border-radius: 5px; padding: 3px 5px; }
+    .qty-input { width: 50px; padding: 3px; text-align: right; font-size: 14px; }
+    @media (max-width: 600px) {
+      .card { font-size: 16px; }
+      .export-btn, .search-input { width: 100%; }
+    }
+    .remove {
+  background: #666;
+  color: white;
+}
+
+  </style>
+</head>
+<body>
+  <div class="header">
+  <!--  <img src="https://cdn.glitch.global/e992bb17-2a27-4582-a4c9-26bd9a2bb6c9/logoDETC.png?v=1749040244837" width:42px height:15px alt="DE-TC logo"/> !-->
+    <h2>Controle de Estoque - Reagentes</h2>
+    <div class="tabs">
+      <button>Reagentes</button>
+     <button onclick="window.location.href='consumiveis.html'">Consumíveis</button>
+      <button onclick="window.location.href='vidrarias.html'">Vidrarias</button>
+      <button onclick="window.location.href='gases.html'">Gases</button>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="left">
+      <div class="card">Total Reagentes: <span id="totalReagentes">0</span></div>
+    </div>
+    <button class="export-btn" onclick="exportarExcel()">Exportar</button>
+    <button class="export-btn" onclick="salvarAlteracoes()">Salvar</button>
+    <button class="export-btn" onclick="mostrarBaixoEstoque()">Itens Críticos</button>
+    <button class="export-btn" onclick="abrirModal()">Fornecedores</button>
+
+    
+     <input type="text" id="searchBox" class="search-input" placeholder="Busca">
+  </div>
+  
+  <div class="summary">
+  <!-- Campos para adicionar novo produto -->
+  <input id="novoNome" class="search-input" placeholder="Nome do produto">
+  <input id="novaQtd" class="search-input" type="number" min="0" placeholder="Quantidade">
+  <select id="novaUnidade" class="search-input">
+    <option value="L">L</option>
+    <option value="g">g</option>
+    <option value="kg">kg</option>
+    <option value="UND">UND</option>
+  </select>
+  <input id="novoLimite" class="search-input" type="number" min="0" placeholder="Limite (opcional)">
+  <button class="export-btn" onclick="adicionarProduto()">Adicionar</button>
+</div>
+
+  
+  <div class="container">
+    <div class="product-list" id="litros"><h3>Litros</h3></div>
+    <div class="product-list" id="gramas"><h3>Gramas</h3></div>
+    <div class="product-list" id="und"><h3>Unidades</h3></div>
+  </div>
+  
+  
+  <div id="modalFornecedores" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center; ">
+  <div style="background:white; max-width:90%; max-height:90%; overflow:auto; padding:20px; border-radius:8px; font-size:12px; font-family:NouvelR;">
+    <h3>Fornecedores</h3>
+    <table border="1" style="border-collapse:collapse; width:100%;">
+      <thead>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Contatos</th>
+          <th>Produtos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Almoxarifado</td><td>Solicitação SAP</td><td>Álcool Isopropílico, Spotcheck</td></tr>
+        <tr><td>Pró-Análise</td><td>vendas16@pro-analise.com.br</td><td>Solventes, padrões, consumíveis gerais, tampas KFC (Alwsci), vidrarias</td></tr>
+        <tr><td>Synth</td><td>brenda.oliveira@synth.com.br /
+      synth@synth.com.br</td><td>Solventes, padrões, consumíveis, vidrarias</td></tr>
+        <tr><td>Navelab</td><td>vendas3@navelab.com.br</td><td>Solventes, padrões, consumíveis, vidrarias</td></tr>
+        <tr><td>Calibre Scientific</td><td>cmedeiros@calibrescientific.com.br</td><td>Solventes, padrões, consumíveis, padrão TAN/TBN, vidrarias</td></tr>
+        <tr><td>Inplafer</td><td>comercial@inplafer.com.br</td><td>Frascos plásticos</td></tr>
+        <tr><td>Hexis / JG Química</td><td>(11) 4589-2622 /
+cotacoes@hexis.com.br</td><td>Consumíveis cromatografia</td></tr>
+        <tr><td>Láctea Científica</td><td>lactea@lactea.com.br / 
+(11) 3277-8522 /(11) 9 9505-6392</td><td>Padrão de Viscosidade, Produtos Geserco</td></tr>
+        <tr><td>Pensalab</td><td>viviane.calixto@pensalab.com.br / especialistas@pensalab.com.br</td><td>Consumíveis MCRT</td></tr>
+        <tr><td>Specsol</td><td>contato</td><td>Soluções tampão</td></tr>
+        <tr><td>Laborglas</td><td>laborglas@laborglas.com.br
+</td><td>Vidrarias</td></tr>
+        <tr><td>Cirupar</td><td>(41) 3014-0010 / lojavirtual@cirupar.com.br</td><td>Consumíveis limpeza</td></tr>
+      </tbody>
+    </table>
+    <br>
+    <h3>Fluxo de cotação e compras</h3>
+    <ol>
+      <li>Solicitar cotações / orçamentos com os fornecedores;</li>
+       <li>Enviar ao fornecedor a licença para produtos controlados pelo exército (se aplicável ao produto);</li>
+      <li>Selecionar a cotação mais adequada de acordo com a marcas aprovadas pelo Meio ambiente (consultar lista branca), menor preço disponível, disponibilidade de entrega mais adequada; quantidade de produtos adequada (suficiente para 6 meses de uso);</li>
+      <li>Enviar a cotação final selecionada para o responsável de compras realizar a requisição;</li>
+      <li>Enviar o pedido para o fornecedor e solicitar prazo de entraga (opcional);</li>
+      <h4>Pós Recebimento</h4>
+      <li>Ao receber conferir a nota fiscal e os produtos recebidos;</li>
+      <li>Entregar a nota fiscal ao responsável de compras.</li>
+       <h4>Pontos Importantes</h4>
+
+    </ol>
+    <button onclick="fecharModal()" style="margin-top:10px; padding:4px 9px; font-family: NouvelR; font-size: 10px; background-color: #EFDF00;">Fechar</button>
+  </div>
+</div>
+
+  
+  
+  
+  <script>
+    const reagentes = [
+  { nome: "ACETONA", quantidade: 3, unidade: "L", limite: null },
+  { nome: "ÁCIDO ACÉTICO", quantidade: 2, unidade: "L", limite: null },
+  { nome: "ÁCIDO CLORÍDRICO EM ISOPROPANOL (0,1 M)", quantidade: 3, unidade: "L", limite: 1 },
+  { nome: "ÁCIDO CLORÍDRICO PA (37%)", quantidade: 1, unidade: "L", limite: null },
+  { nome: "ÁCIDO HIDROFLUORÍDRICO", quantidade: 1, unidade: "L", limite: null },
+  { nome: "ÁCIDO NÍTRICO", quantidade: 3, unidade: "L", limite: 1 },
+  { nome: "ÁCIDO SULFURICO 98%", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "ÁLCOOL ETÍLICO PA (95%)", quantidade: 12, unidade: "L", limite: null },
+  { nome: "ÁLCOOL ISOPROPÍLICO", quantidade: 5, unidade: "L", limite: 1 },
+  { nome: "METANOL", quantidade: 4, unidade: "L", limite: null },
+  { nome: "BICARBONATO DE SÓDIO", quantidade: 1, unidade: "kg", limite: null },
+  { nome: "BIFTALATO DE POTÁSSIO", quantidade: 500, unidade: "g", limite: null },
+  { nome: "CATALISADOR ACRILICO", quantidade: 0.2, unidade: "L", limite: null },
+  { nome: "CICLOHEXANO", quantidade: 8, unidade: "L", limite: null },
+  { nome: "CLORETO DE CÁLCIO", quantidade: 1, unidade: "kg", limite: null },
+  { nome: "CLORETO DE COBRE", quantidade: 250, unidade: "g", limite: null },
+  { nome: "CLORETO DE LITIO EM ETANOL", quantidade: 0.75, unidade: "L", limite: null },
+  { nome: "CLORETO DE SÓDIO PA", quantidade: 500, unidade: "g", limite: null },
+  { nome: "CLOROFÓRMIO PA", quantidade: 2, unidade: "L", limite: 1 },
+  { nome: "COMBITITRAN5", quantidade: 2, unidade: "L", limite: 1 },
+  { nome: "DESCARTE", quantidade: 7, unidade: "L", limite: null },
+  { nome: "DESINGRIPANTE", quantidade: 0, unidade: "L", limite: null },
+  { nome: "EICOSANO", quantidade: 250, unidade: "g", limite: null },
+  { nome: "ETANOL", quantidade: 6, unidade: "L", limite: null },
+  { nome: "ÉTER DE PETROLEO", quantidade: 4, unidade: "L", limite: 2 },
+  { nome: "GASOLINA", quantidade: 3, unidade: "L", limite: null },
+  { nome: "GRAXA DE SILICONE", quantidade: 100, unidade: "g", limite: null },
+  { nome: "HAVOLINE", quantidade: 1, unidade: "L", limite: null },
+  { nome: "HEXADECANO", quantidade: 0.25, unidade: "L", limite: 0.5 },
+  { nome: "HEXANO", quantidade: 5, unidade: "L", limite: 2 },
+  { nome: "HIDRÓXIDO DE POTÁSSIO EM ISOPROPANOL (0,1 M)", quantidade: 4, unidade: "L", limite: 1 },
+  { nome: "HIDROXIDO DE SODIO ESCAMAS", quantidade: 1, unidade: "kg", limite: null },
+  { nome: "METIL PIRROLIDONA", quantidade: 4, unidade: "L", limite: null },
+  { nome: "HEPTANO", quantidade: 6, unidade: "L", limite: 1 },
+  { nome: "ÓLEO DIESEL", quantidade: 7, unidade: "L", limite: null },
+  { nome: "PADRÃO MCRT 2,20", quantidade: 0, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO MCRT 0,3", quantidade: 1, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO MCRT 9,51", quantidade: 1, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO MCRT 24,2", quantidade: 1, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO TAN", quantidade: 50, unidade: "g", limite: 50 },
+  { nome: "PADRÃO TBN", quantidade: 50, unidade: "g", limite: 50 },
+  { nome: "PADRÃO TEOR DE ÁGUA SÓLIDO", quantidade: 1, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO DE ÁGUA", quantidade: 9, unidade: "UND", limite: 1 },
+  { nome: "PADRÃO VISCOSIDADE", quantidade: 1.5, unidade: "L", limite: 1 },
+  { nome: "PENEIRAS MOLECULARES", quantidade: 250, unidade: "g", limite: null },
+  { nome: "REAGENTE KARL FISCHER", quantidade: 2, unidade: "L", limite: 1 },
+  { nome: "SOLUÇÃO CLORETO DE POTÁSSIO 3M", quantidade: 1, unidade: "L", limite: null },
+  { nome: "SOLUÇÃO PADRÃO DE CONDUTIVIDADE", quantidade: 0.5, unidade: "L", limite: null },
+  { nome: "SOLUÇÃO TAMPÃO PH10", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "SOLUÇÃO TAMPÃO PH11", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "SOLUÇÃO TAMPÃO PH3", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "SOLUÇÃO TAMPÃO PH4", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "SOLUÇÃO TAMPÃO PH7", quantidade: 1, unidade: "L", limite: 1 },
+  { nome: "SULFATO DE COBRE", quantidade: 500, unidade: "g", limite: null },
+  { nome: "TOLUENO PA", quantidade: 6, unidade: "L", limite: 2 },
+  { nome: "TOLUENO HPLC", quantidade: 5, unidade: "L", limite: 2 },
+  { nome: "TRIMETILPENTANO", quantidade: 5, unidade: "L", limite: null },
+  { nome: "XILENO", quantidade: 9, unidade: "L", limite: null },
+  { nome: "KYRO51 (SILICONE VISCOSIMETRO)", quantidade: 2.5, unidade: "L", limite: null },
+  { nome: "CLORETO DE POTÁSSIO 3M", quantidade: 1, unidade: "L", limite: null },
+  { nome: "SPRAY DESINGRIPANTE", quantidade: 1, unidade: "UND", limite: null },
+  { nome: "SKL WP", quantidade: 11, unidade: "UND", limite: 1 },
+  { nome: "SKC S", quantidade: 11, unidade: "UND", limite: 1 }
+];
+   
+  const STORAGE_KEY = "estoqueReagentes";
+function carregarDoStorage() {
+  const dadosSalvos = localStorage.getItem(STORAGE_KEY);
+  if (dadosSalvos) {
+    try {
+      const dados = JSON.parse(dadosSalvos);
+      if (Array.isArray(dados)) {
+        reagentes.length = 0; // limpa o array atual mantendo referência
+        dados.forEach(r => reagentes.push(r));
+      }
+    } catch (e) {
+      console.error("Erro ao carregar os dados salvos:", e);
+    }
+  }
+}
+
+function salvarAlteracoes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(reagentes));
+  atualizarData();
+  alert("Alterações salvas com sucesso!");
+}
+
+
+  function atualizarData() {
+    const hoje = new Date();
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = String(hoje.getFullYear()).slice(-2);
+    const elemento = document.getElementById("ultimaAtualizacao");
+    if (elemento) {
+      elemento.textContent = `${dia}/${mes}/${ano}`;
+    }
+  }
+
+  function alterarQtd(index, delta) {
+    reagentes[index].quantidade = Math.max(0, reagentes[index].quantidade + delta);
+    atualizarData();
+    renderProducts();
+  }
+
+  function atualizarQtd(index, novoValor) {
+    const parsed = parseFloat(novoValor);
+    if (!isNaN(parsed) && parsed >= 0) {
+      reagentes[index].quantidade = parsed;
+      atualizarData();
+      renderProducts();
+    }
+  }
+
+  function renderProducts() {
+    const filtro = document.getElementById("searchBox").value.toLowerCase();
+    const container = {
+      L: document.getElementById("litros"),
+      g: document.getElementById("gramas"),
+      kg: document.getElementById("gramas"),
+      UND: document.getElementById("und")
+    };
+
+    container.L.innerHTML = "<h3>Litros</h3>";
+    container.g.innerHTML = "<h3>Gramas</h3>";
+    container.UND.innerHTML = "<h3>Unidades</h3>";
+
+    const listaFiltrada = filtro
+      ? reagentes.filter(r => r.nome.toLowerCase().includes(filtro))
+      : reagentes;
+
+    document.getElementById("totalReagentes").textContent = listaFiltrada.length;
+
+    listaFiltrada.forEach((r, i) => {
+      const isLow = r.limite !== null && r.quantidade < r.limite;
+      const classExtra = isLow ? 'low-stock' : '';
+      const itemHTML = `
+        <div class="product ${classExtra}">
+          <div style="flex: 1 1 100%;">${r.nome}</div>
+          <div class="bar"></div>
+          <input class="qty-input" type="number" min="0" value="${r.quantidade}" onchange="atualizarQtd(${i}, this.value)"> ${r.unidade}
+          <div class="controls">
+            <button class="plus" onclick="alterarQtd(${i}, 1)">+</button>
+            <button class="minus" onclick="alterarQtd(${i}, -1)">−</button>
+            <button class="remove" onclick="removerProduto(${i})">✖</button>
+          </div>
+        </div>`;
+
+      const key = r.unidade === "kg" ? "g" : r.unidade;
+      if (key in container) container[key].innerHTML += itemHTML;
+    });
+  }
+
+  function mostrarBaixoEstoque() {
+    const criticos = reagentes.filter(r => r.limite !== null && r.quantidade < r.limite);
+    if (criticos.length === 0) {
+      alert("Nenhum reagente está abaixo do limite mínimo.");
+      return;
+    }
+    const lista = criticos.map(r => `- ${r.nome} (${r.quantidade} ${r.unidade})`).join('\n');
+    alert("Reagentes abaixo do limite mínimo:\n\n" + lista);
+  }
+
+  function exportarExcel() {
+    let csvContent = "data:text/csv;charset=utf-8,Nome,Quantidade,Unidade,Limite\n";
+    reagentes.forEach(r => {
+      csvContent += `${r.nome},${r.quantidade},${r.unidade},${r.limite ?? ''}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "estoque_reagentes.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function adicionarProduto() {
+    const nome = document.getElementById("novoNome").value.trim();
+    const quantidade = parseFloat(document.getElementById("novaQtd").value);
+    const unidade = document.getElementById("novaUnidade").value;
+    const limiteValor = document.getElementById("novoLimite").value.trim();
+    const limite = limiteValor === "" ? null : parseFloat(limiteValor);
+
+    if (!nome || isNaN(quantidade) || quantidade < 0) {
+      alert("Preencha corretamente o nome e a quantidade.");
+      return;
+    }
+
+    const produtoExistente = reagentes.find(r => r.nome.toLowerCase() === nome.toLowerCase());
+    if (produtoExistente) {
+      alert("Este produto já está na lista.");
+      return;
+    }
+
+    reagentes.push({
+      nome: nome.toUpperCase(),
+      quantidade: quantidade,
+      unidade: unidade,
+      limite: limite
+    });
+
+    document.getElementById("novoNome").value = "";
+    document.getElementById("novaQtd").value = "";
+    document.getElementById("novoLimite").value = "";
+
+    salvarAlteracoes();
+    renderProducts();
+  }
+
+  function abrirModal() {
+    document.getElementById('modalFornecedores').style.display = 'flex';
+  }
+
+  function fecharModal() {
+    document.getElementById('modalFornecedores').style.display = 'none';
+  }
+
+  // Inicialização
+  document.getElementById("searchBox").addEventListener("input", renderProducts);
+  carregarDoStorage();
+  renderProducts();
+    
+    function removerProduto(index) {
+  const confirmacao = confirm(`Tem certeza que deseja remover o produto "${reagentes[index].nome}" do estoque?`);
+  if (confirmacao) {
+    reagentes.splice(index, 1); // remove 1 item no índice
+    salvarAlteracoes();         // atualiza localStorage
+    renderProducts();           // re-renderiza
+  }
+}
+
+    
+</script>
+
+
+  
+</body>
+</html>

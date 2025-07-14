@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Estoque - Consumíveis</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="https://cdn.glitch.global/e992bb17-2a27-4582-a4c9-26bd9a2bb6c9/favicon-16x16.png?v=1748953413949" />
+  <style>
+    body { font-family: NouvelR, NouvelR;font-size:10px; background: #f0f0f0; margin: 0; padding: 0; }
+    .header { background-color: #000; color: white; padding: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    .tabs { display: flex; flex-wrap: wrap; }
+    .tabs button { padding: 8px 16px; margin: 5px 5px; background: none; border: 2px solid white; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .summary { display: flex; flex-wrap: wrap; justify-content: normal; align-items: center; padding: 20px; background: white; margin: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); gap: 15px; }
+    .summary .left { display: flex; flex-wrap: wrap; justify align-items: center; gap: 10px; }
+    .card { font-size: 20px; font-weight: bold; }
+    .export-btn { padding: 8px 16px; background-color: black; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: NouvelR }
+    .search-input { padding: 6px; border-radius: 5px; border: 1px solid #ccc; font-size: 12px;font-family: NouvelR; }
+    .horizontal-container { display: flex; flex-wrap: wrap; gap: 15px; padding: 0 10px 20px 10px; }
+    .product-list { flex: 1 1 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-width: 250px; }
+    .product-list h3 { text-align: center; font-size: 15px; }
+    .product { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 10px 0; gap: 8px; }
+    .bar { height: 7px; background: lightgrey; border-radius: 3px; width: 80px; min-width: 60px; }
+    .controls button { font-size: 12px; font-family: NouvelR; padding: 4px 8px; border: none; border-radius: 50%; margin-left: 3px; cursor: pointer; }
+    .plus { background: #28a745; color: white; }
+    .minus { background: red; color: white; }
+    .low-stock { background: #ffcccc; border: 1px solid red; border-radius: 5px; padding: 3px 5px; }
+    .qty-input { width: 50px; padding: 3px; text-align: right; font-size: 14px; }
+    @media (max-width: 600px) {
+      .card { font-size: 16px; }
+      .export-btn, .search-input { width: 100%; }
+    }
+    .remove {
+  background: #666;
+  color: white;
+}
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Controle de Estoque - Consumíveis</h2>
+    <div class="tabs">
+      <button onclick="window.location.href='index.html'">Reagentes</button>
+      <button>Consumíveis</button>
+       <button onclick="window.location.href='vidrarias.html'">Vidrarias</button>
+      <button onclick="window.location.href='gases.html'">Gases</button>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="left">
+      <div class="card">Total Consumíveis: <span id="totalConsumiveis">0</span></div>
+     
+    </div>
+   <button class="export-btn" onclick="exportarExcel()">Exportar</button>
+  <button class="export-btn" onclick="salvarAlteracoes()">Salvar</button>
+  <button class="export-btn" onclick="mostrarBaixoEstoque()">Itens Críticos</button>
+  <button class="export-btn" onclick="abrirModal()">Fornecedores</button>
+
+     <input type="text" id="searchBox" class="search-input" placeholder="Buscar">
+    
+  </div>
+  
+  <div class="summary">
+  <input id="novoNome" class="search-input" placeholder="Nome do produto">
+  <input id="novaArea" class="search-input" placeholder="Área">
+  <input id="novaQtd" class="search-input" type="number" min="0" placeholder="Quantidade">
+  <select id="novaUnidade" class="search-input">
+    <option value="UND">UND</option>
+    <option value="g">g</option>
+    <option value="L">L</option>
+    <option value="kg">kg</option>
+  </select>
+  <input id="novoLimite" class="search-input" type="number" min="0" placeholder="Limite (opcional)">
+  <button class="export-btn" onclick="adicionarConsumivel()">Adicionar</button>
+</div>
+
+  
+  <div class="horizontal-container" id="container"></div>
+  
+  
+  <div id="modalFornecedores" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center; ">
+  <div style="background:white; max-width:90%; max-height:90%; overflow:auto; padding:20px; border-radius:8px; font-size:12px; font-family:NouvelR;">
+    <h3>Fornecedores</h3>
+    <table border="1" style="border-collapse:collapse; width:100%;">
+      <thead>
+        <tr>
+          <th>Fornecedor</th>
+          <th>Contatos</th>
+          <th>Produtos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Almoxarifado</td><td>Solicitação SAP</td><td>Álcool Isopropílico, Spotcheck</td></tr>
+        <tr><td>Pró-Análise</td><td>vendas16@pro-analise.com.br</td><td>Solventes, padrões, consumíveis gerais, tampas KFC (Alwsci), vidrarias</td></tr>
+        <tr><td>Synth</td><td>brenda.oliveira@synth.com.br</td><td>Solventes, padrões, consumíveis, vidrarias</td></tr>
+        <tr><td>Navelab</td><td>vendas3@navelab.com.br</td><td>Solventes, padrões, consumíveis, vidrarias</td></tr>
+        <tr><td>Calibre Scientific</td><td>cmedeiros@calibrescientific.com.br</td><td>Solventes, padrões, consumíveis, padrão TAN/TBN, vidrarias</td></tr>
+        <tr><td>Inplafer</td><td>comercial@inplafer.com.br</td><td>Frascos plásticos</td></tr>
+        <tr><td>Hexis / JG Química</td><td>(11) 4589-2622 /
+cotacoes@hexis.com.br</td><td>Consumíveis cromatografia</td></tr>
+        <tr><td>Láctea Científica</td><td>lactea@lactea.com.br / 
+(11) 3277-8522 / (11) 9 9505-6392</td><td>Padrão de Viscosidade, Produtos Geserco</td></tr>
+        <tr><td>Pensalab</td><td>viviane.calixto@pensalab.com.br</td><td>Consumíveis MCRT</td></tr>
+        <tr><td>Specsol</td><td>contato</td><td>Soluções tampão</td></tr>
+        <tr><td>Laborglas</td><td>laborglas@laborglas.com.br</td><td>Vidrarias</td></tr>
+        <tr><td>Cirupar</td><td>(41) 3014-0010 / lojavirtual@cirupar.com.br</td><td>Consumíveis limpeza</td></tr>
+      </tbody>
+    </table>
+    <br>
+    <h3>Fluxo de cotação e compras</h3>
+    <ol>
+      <li>Solicitar cotações / orçamentos com os fornecedores;</li>
+       <li>Enviar ao fornecedor, quando solicitado, a licença para produtos controlados pelo exército (se aplicável ao produto);</li>
+      <li>Selecionar a cotação mais adequada de acordo com a marcas aprovadas pelo Meio ambiente (consultar lista branca), menor preço disponível, disponibilidade de entrega mais adequada; quantidade de produtos adequada (suficiente para 6 meses de uso);</li>
+      <li>Enviar a cotação final selecionada para o responsável de compras realizar a requisição;</li>
+      <li>Enviar o pedido para o fornecedor e solicitar prazo de entraga (opcional);</li>
+      <h4>Pós Recebimento</h4>
+      <li>Ao receber conferir a nota fiscal e os produtos recebidos;</li>
+      <li>Entregar a nota fiscal ao responsável de compras.</li>
+       <h4>Pontos Importantes</h4>  
+    </ol>
+    <button onclick="fecharModal()" style="margin-top:10px; padding:4px 9px; font-family: NouvelR; font-size: 10px; background-color: #EFDF00;">Fechar</button>
+  </div>
+</div>
+
+
+  <script>
+    const consumiveis = [
+      { nome: "ALGODÃO", area: "LIMPEZA", quantidade: 4, unidade: "UND", limite: 1 },
+      { nome: "COTONETE", area: "LIMPEZA", quantidade: 0, unidade: "UND", limite: 1 },
+      { nome: "EXTRAN", area: "LIMPEZA", quantidade: 2, unidade: "UND", limite: 1 },
+      { nome: "PANOS DE LIMPEZA", area: "LIMPEZA", quantidade: 400, unidade: "UND", limite: 100 },
+      { nome: "LINER", area: "CROMATÓGRAFO", quantidade: 6, unidade: "UND", limite: 1 },
+      { nome: "SEPTO", area: "CROMATÓGRAFO", quantidade: 35, unidade: "UND", limite: 1 },
+      { nome: "ORING", area: "CROMATÓGRAFO", quantidade: 9, unidade: "UND", limite: 1 },
+      { nome: "FERRULE", area: "CROMATÓGRAFO", quantidade: 14, unidade: "UND", limite: 1 },
+      { nome: "SELO DE OURO", area: "CROMATÓGRAFO", quantidade: 2, unidade: "UND", limite: 1 },
+      { nome: "COLUNA", area: "CROMATÓGRAFO", quantidade: 0, unidade: "UND", limite: 1 },
+      { nome: "SERINGA", area: "CROMATÓGRAFO", quantidade: 0, unidade: "UND", limite: 1 },
+      { nome: "VIALS", area: "CROMATÓGRAFO", quantidade: 150, unidade: "UND", limite: 50 },
+      { nome: "TAMPA VIALS", area: "CROMATÓGRAFO", quantidade: 50, unidade: "UND", limite: 50 },
+      { nome: "VIALS", area: "MICRO RESÍDUO DE CARBONO", quantidade: 100, unidade: "UND", limite: 12 },
+      { nome: "TAMPA FRASCOS", area: "KARL FISCHER", quantidade: 600, unidade: "UND", limite: 100 },
+      { nome: "PIPETAS PASTEUR", area: "ENSAIOS", quantidade: 2500, unidade: "UND", limite: 500 }
+    ];
+    
+
+        const STORAGE_KEY = "estoqueConsumiveis";
+
+        function salvarAlteracoes() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(consumiveis));
+          alert("Alterações salvas com sucesso!");
+        }
+
+            function carregarDoStorage() {
+        const dadosSalvos = localStorage.getItem(STORAGE_KEY);
+        if (dadosSalvos) {
+          try {
+            const dados = JSON.parse(dadosSalvos);
+            if (Array.isArray(dados)) {
+              consumiveis.length = 0; // limpa o array mantendo a referência
+              dados.forEach(item => consumiveis.push(item)); // recarrega todos os itens salvos
+            }
+          } catch (e) {
+            console.error("Erro ao carregar os dados salvos:", e);
+          }
+        }
+      }
+
+
+        function mostrarBaixoEstoque() {
+          const criticos = consumiveis.filter(c => c.limite !== null && c.quantidade < c.limite);
+          if (criticos.length === 0) {
+            alert("Nenhum consumível está abaixo do limite mínimo.");
+            return;
+          }
+          const lista = criticos.map(c => `- ${c.nome} (${c.quantidade} ${c.unidade})`).join('\n');
+          alert("Consumíveis abaixo do limite mínimo:\n\n" + lista);
+        }
+
+        document.getElementById("searchBox").addEventListener("input", renderConsumiveis);
+        carregarDoStorage();  // <-- carrega os dados salvos do localStorage
+        renderConsumiveis();
+
+
+    
+    
+
+    function renderConsumiveis() {
+      const filtro = document.getElementById("searchBox").value.toLowerCase();
+      const container = document.getElementById("container");
+      container.innerHTML = "";
+
+      const agrupado = {};
+      const filtrado = filtro
+        ? consumiveis.filter(c => c.nome.toLowerCase().includes(filtro))
+        : consumiveis;
+
+      filtrado.forEach(item => {
+        if (!agrupado[item.area]) agrupado[item.area] = [];
+        agrupado[item.area].push(item);
+      });
+
+      document.getElementById("totalConsumiveis").textContent = filtrado.length;
+
+      for (const area in agrupado) {
+        const div = document.createElement("div");
+        div.className = "product-list";
+        div.innerHTML = `<h3>${area}</h3>`;
+
+        agrupado[area].forEach(c => {
+          const index = consumiveis.findIndex(item => item.nome === c.nome && item.area === c.area);
+          const isLow = c.limite !== null && c.quantidade < c.limite;
+          const classExtra = isLow ? 'low-stock' : '';
+          div.innerHTML += `
+            <div class="product ${classExtra}">
+              <div style="flex: 1 1 100%;">${c.nome}</div>
+              <div class="bar"></div>
+              <input class="qty-input" type="number" min="0" value="${c.quantidade}" onchange="atualizarQtd(${index}, this.value)"> ${c.unidade}
+              <div class="controls">
+                <button class="plus" onclick="alterarQtd(${index}, 1)">+</button>
+                <button class="minus" onclick="alterarQtd(${index}, -1)">−</button>
+                <button class="remove" onclick="removerConsumivel(${index})">✖</button>
+              </div>
+
+            </div>`;
+        });
+
+        container.appendChild(div);
+      }
+    }
+
+    function alterarQtd(index, delta) {
+      consumiveis[index].quantidade = Math.max(0, consumiveis[index].quantidade + delta);
+      renderConsumiveis();
+    }
+
+    function atualizarQtd(index, novoValor) {
+      const parsed = parseFloat(novoValor);
+      if (!isNaN(parsed) && parsed >= 0) {
+        consumiveis[index].quantidade = parsed;
+        renderConsumiveis();
+      }
+    }
+
+    function exportarExcel() {
+      let csvContent = "data:text/csv;charset=utf-8,Nome,Área,Quantidade,Unidade,Limite\n";
+      consumiveis.forEach(c => {
+        csvContent += `${c.nome},${c.area},${c.quantidade},${c.unidade},${c.limite ?? ''}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "estoque_consumiveis.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    document.getElementById("searchBox").addEventListener("input", renderConsumiveis);
+    renderConsumiveis();
+    
+      // modal fornecedores 
+    
+
+  function abrirModal() {
+    document.getElementById('modalFornecedores').style.display = 'flex';
+  }
+  function fecharModal() {
+    document.getElementById('modalFornecedores').style.display = 'none';
+  }
+    
+    function adicionarConsumivel() {
+  const nome = document.getElementById("novoNome").value.trim();
+  const area = document.getElementById("novaArea").value.trim();
+  const quantidade = parseFloat(document.getElementById("novaQtd").value);
+  const unidade = document.getElementById("novaUnidade").value;
+  const limiteVal = document.getElementById("novoLimite").value;
+  const limite = limiteVal === "" ? null : parseFloat(limiteVal);
+
+  if (!nome || !area || isNaN(quantidade) || quantidade < 0) {
+    alert("Preencha todos os campos obrigatórios corretamente.");
+    return;
+  }
+
+  const existente = consumiveis.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c.area.toLowerCase() === area.toLowerCase());
+  if (existente) {
+    alert("Este produto já está na lista.");
+    return;
+  }
+
+  consumiveis.push({
+    nome: nome.toUpperCase(),
+    area: area.toUpperCase(),
+    quantidade: quantidade,
+    unidade: unidade,
+    limite: limite
+  });
+
+  salvarAlteracoes();
+  renderConsumiveis();
+
+  document.getElementById("novoNome").value = "";
+  document.getElementById("novaArea").value = "";
+  document.getElementById("novaQtd").value = "";
+  document.getElementById("novoLimite").value = "";
+}
+
+function removerConsumivel(index) {
+  const confirmacao = confirm(`Deseja realmente remover o item "${consumiveis[index].nome}" da área "${consumiveis[index].area}"?`);
+  if (confirmacao) {
+    consumiveis.splice(index, 1);
+    salvarAlteracoes();
+    renderConsumiveis();
+  }
+}
+
+
+
+    
+    
+  </script>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Estoque - Gases</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="https://cdn.glitch.global/e992bb17-2a27-4582-a4c9-26bd9a2bb6c9/favicon-16x16.png?v=1748953413949" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: NouvelR, NouvelR; font-size:10px; background: #f8f9fa; margin: 0; }
+    .header { background: black; color: white; padding: 10px; display: flex; justify-content: space-between; flex-wrap:normal; align-items: center; }
+    button{ padding: 8px 16px; margin: 5px 5px; background: none; border: 2px solid white; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; font-family: NouvelR; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background: black; color: white; }
+    .chart-section { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px; padding: 20px; }
+    .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .actions { margin: 15px 20px; text-align: right; }
+    .actions button { padding: 6px 12px; background: black; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 8px; font-family: NouvelR ; }
+    .low { background: #EFDF00; }
+    input[type=number] { width: 60px; padding: 4px; text-align: center;font-family: NouvelR; font-size:10px; }
+    input[type=text] { width: 90px; font-family: NouvelR; font-size:10px;  }
+    .tabs { display: flex; flex-wrap: wrap; }
+    
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h2>Controle de Estoque - Gases</h2>
+
+    <button onclick="window.location.href='index.html'">Reagentes</button>
+    <button onclick="window.location.href='consumiveis.html'">Consumíveis</button>
+  <button onclick="window.location.href='vidrarias.html'">Vidrarias</button>
+       <button>Gases</button>
+
+</div>
+
+<div class="chart-section" id="charts"></div>
+
+<div style="padding: 20px;">
+  <h3>Controle de Cilindros Backup</h3>
+  <table>
+    <thead>
+  <tr>
+    <th>Cilindros</th>
+    <th>Quantidade em Uso</th>
+    <th>Quantidade de Backup's</th>
+    <th>Cilindros Trocados</th>
+    <th>Preço (R$)</th>
+  </tr>
+</thead>
+
+
+    <tbody id="tabelaBackups"></tbody>
+  </table>
+</div>
+
+<div class="container">
+  <div class="actions">
+    <button onclick="adicionarLinha()">+ Nova Semana</button>
+    <button onclick="salvarDados()">Salvar Dados</button>
+    <button onclick="exportarCSV()">Exportar</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Semana</th><th>Data</th><th>Oxigênio</th><th>Ar Sintético</th><th>Hélio</th><th>Nitrogênio TGA</th><th>Nitrogênio Cromatógrafo</th><th>Argônio Spectro</th><th>Hidrogênio</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaGases"></tbody>
+  </table>
+</div>
+
+<script>
+  const gases = ["Oxigênio", "Ar Sintético", "Hélio", "Nitrogênio TGA", "Nitrogênio Cromat.", "Argônio Spectro", "Hidrogênio"];
+  const cores = ['#f44336', '#2196f3', '#ffeb3b', '#009688', '#9c27b0', '#ff9800', '#607d8b'];
+
+  let dadosBackups = [
+    { gas: "Oxigênio", uso: 1, backup: 1 },
+    { gas: "Ar Sintético", uso: 1, backup: 0 },
+    { gas: "Hélio", uso: 1, backup: 0 },
+    { gas: "Nitrogênio TGA", uso: 1, backup: 0 },
+    { gas: "Nitrogênio Cromat.", uso: 1, backup: 0 },
+    { gas: "Argônio Spectro", uso: 1, backup: 1 },
+    { gas: "Hidrogênio", uso: 1, backup: 1 }
+  ];
+
+ let dadosPressao = [
+  {
+    "semana": 1,
+    "data": "",
+    "Oxigênio": null,
+    "Ar Sintético": null,
+    "Hélio": null,
+    "Nitrogênio TGA": null,
+    "Nitrogênio Cromat.": null,
+    "Argônio Spectro": null,
+    "Hidrogênio": null
+  },
+  {
+    "semana": 2,
+    "data": "07/01/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 15,
+    "Hélio": 55,
+    "Nitrogênio TGA": 185,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 170,
+    "Hidrogênio": 30
+  },
+  {
+    "semana": 3,
+    "data": "14/01/2025",
+    "Oxigênio": null,
+    "Ar Sintético": null,
+    "Hélio": null,
+    "Nitrogênio TGA": null,
+    "Nitrogênio Cromat.": null,
+    "Argônio Spectro": null,
+    "Hidrogênio": null
+  },
+  {
+    "semana": 4,
+    "data": "21/01/2025",
+    "Oxigênio": null,
+    "Ar Sintético": null,
+    "Hélio": null,
+    "Nitrogênio TGA": null,
+    "Nitrogênio Cromat.": null,
+    "Argônio Spectro": null,
+    "Hidrogênio": null
+  },
+  {
+    "semana": 5,
+    "data": "28/01/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 170,
+    "Hélio": 55,
+    "Nitrogênio TGA": 100,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 165,
+    "Hidrogênio": 30
+  },
+  {
+    "semana": 6,
+    "data": "03/02/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 150,
+    "Hélio": 200,
+    "Nitrogênio TGA": 90,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 165,
+    "Hidrogênio": 30
+  },
+  {
+    "semana": 7,
+    "data": "11/02/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 120,
+    "Hélio": 180,
+    "Nitrogênio TGA": 85,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 165,
+    "Hidrogênio": 30
+  },
+  {
+    "semana": 8,
+    "data": "18/02/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 90,
+    "Hélio": 140,
+    "Nitrogênio TGA": 70,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 160,
+    "Hidrogênio": 140
+  },
+  {
+    "semana": 9,
+    "data": "25/02/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 80,
+    "Hélio": 90,
+    "Nitrogênio TGA": 60,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 155,
+    "Hidrogênio": 130
+  },
+  {
+    "semana": 10,
+    "data": "06/03/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 50,
+    "Hélio": 40,
+    "Nitrogênio TGA": 40,
+    "Nitrogênio Cromat.": 55,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 125
+  },
+  {
+    "semana": 11,
+    "data": "11/03/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 20,
+    "Hélio": 15,
+    "Nitrogênio TGA": 30,
+    "Nitrogênio Cromat.": 50,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 120
+  },
+  {
+    "semana": 12,
+    "data": "18/03/2025",
+    "Oxigênio": 180,
+    "Ar Sintético": 90,
+    "Hélio": 15,
+    "Nitrogênio TGA": 50,
+    "Nitrogênio Cromat.": 50,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 120
+  },
+  {
+    "semana": 13,
+    "data": "25/03/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 65,
+    "Hélio": 0,
+    "Nitrogênio TGA": 50,
+    "Nitrogênio Cromat.": 50,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 115
+  },
+  {
+    "semana": 14,
+    "data": "01/04/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 35,
+    "Hélio": 115,
+    "Nitrogênio TGA": 40,
+    "Nitrogênio Cromat.": 50,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 100
+  },
+  {
+    "semana": 15,
+    "data": "08/04/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 15,
+    "Hélio": 100,
+    "Nitrogênio TGA": 30,
+    "Nitrogênio Cromat.": 40,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 90
+  },
+  {
+    "semana": 16,
+    "data": "15/04/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 0,
+    "Hélio": 60,
+    "Nitrogênio TGA": 20,
+    "Nitrogênio Cromat.": 30,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 90
+  },
+  {
+    "semana": 17,
+    "data": "30/04/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 0,
+    "Hélio": 45,
+    "Nitrogênio TGA": 20,
+    "Nitrogênio Cromat.": 20,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 75
+  },
+  {
+    "semana": 18,
+    "data": "07/05/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 170,
+    "Hélio": 60,
+    "Nitrogênio TGA": 20,
+    "Nitrogênio Cromat.": 10,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 70
+  },
+  {
+    "semana": 19,
+    "data": "14/05/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 160,
+    "Hélio": 45,
+    "Nitrogênio TGA": 20,
+    "Nitrogênio Cromat.": 10,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 60
+  },
+  {
+    "semana": 20,
+    "data": "21/05/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 140,
+    "Hélio": 10,
+    "Nitrogênio TGA": 180,
+    "Nitrogênio Cromat.": 10,
+    "Argônio Spectro": 150,
+    "Hidrogênio": 60
+  },
+  {
+    "semana": 21,
+    "data": "28/05/2025",
+    "Oxigênio": 0,
+    "Ar Sintético": 140,
+    "Hélio": 10,
+    "Nitrogênio TGA": null,
+    "Nitrogênio Cromat.": null,
+    "Argônio Spectro": null,
+    "Hidrogênio": 50
+  }
+];
+
+  function renderTabela() {
+    const tabela = document.getElementById("tabelaGases");
+    tabela.innerHTML = '';
+    dadosPressao.forEach((linha, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${linha.semana}</td>
+        <td><input type="text" value="${linha.data || ''}" onchange="dadosPressao[${i}].data = this.value"></td>
+        ${gases.map(g => `
+          <td><input type="number" value="${linha[g] ?? ''}"
+                     onchange="dadosPressao[${i}]['${g}'] = parseFloat(this.value)"
+                     class="${linha[g] < 50 ? 'low' : ''}"></td>`).join('')}
+      `;
+      tabela.appendChild(tr);
+    });
+  }
+  
+  dadosBackups = dadosBackups.map(d => ({ ...d, trocados: d.trocados ?? 0 }));
+
+function renderTabelaBackups() {
+  const tabela = document.getElementById("tabelaBackups");
+  tabela.innerHTML = '';
+
+  let totalTrocados = 0;
+  let totalPreco = 0;
+
+  dadosBackups = dadosBackups.map(d => ({ ...d, trocados: d.trocados ?? 0, preco: d.preco ?? 0 }));
+
+  dadosBackups.forEach((linha, i) => {
+    totalTrocados += linha.trocados;
+    totalPreco += linha.trocados * linha.preco;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${linha.gas}</td>
+      <td><input type="number" min="0" value="${linha.uso}" onchange="dadosBackups[${i}].uso = parseInt(this.value)"></td>
+      <td><input type="number" min="0" value="${linha.backup}" 
+                 onchange="dadosBackups[${i}].backup = parseInt(this.value); this.className = this.value == 0 ? 'low' : ''" 
+                 class="${linha.backup == 0 ? 'low' : ''}"></td>
+      <td><input type="number" min="0" value="${linha.trocados}" 
+                 onchange="dadosBackups[${i}].trocados = parseInt(this.value); renderTabelaBackups();"></td>
+      <td><input type="number" min="0" step="0.01" value="${linha.preco}" 
+                 onchange="dadosBackups[${i}].preco = parseFloat(this.value); renderTabelaBackups();"></td>
+    `;
+    tabela.appendChild(tr);
+  });
+
+  // Linha de totais
+  const totalRow1 = document.createElement("tr");
+  totalRow1.innerHTML = `
+    <td colspan="3"><strong>Total de Cilindros Trocados:</strong></td>
+    <td colspan="2"><strong>${totalTrocados}</strong></td>
+  `;
+  tabela.appendChild(totalRow1);
+
+  const totalRow2 = document.createElement("tr");
+  totalRow2.innerHTML = `
+    <td colspan="4"><strong>Total em R$:</strong></td>
+    <td><strong>${totalPreco.toFixed(2)}</strong></td>
+  `;
+  tabela.appendChild(totalRow2);
+}
+
+
+  function renderGraficos() {
+    const chartsDiv = document.getElementById("charts");
+    chartsDiv.innerHTML = '';
+    gases.forEach((gas, i) => {
+      const canvas = document.createElement("canvas");
+      const container = document.createElement("div");
+      container.className = "chart-container";
+      container.appendChild(canvas);
+      chartsDiv.appendChild(container);
+
+      new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+          labels: dadosPressao.map(e => `S${e.semana}`),
+          datasets: [{
+            label: gas,
+            data: dadosPressao.map(e => e[gas] ?? null),
+            borderColor: cores[i],
+            backgroundColor: cores[i],
+            fill: false,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { title: { display: true, text: 'Semana' }, grid: { display: false } },
+            y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' }, grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  function adicionarLinha() {
+    const novaSemana = dadosPressao.length + 1;
+    const nova = { semana: novaSemana, data: '' };
+    gases.forEach(g => nova[g] = '');
+    dadosPressao.push(nova);
+    renderTabela();
+    renderGraficos();
+  }
+
+  function exportarCSV() {
+    let csv = "Semana,Data," + gases.join(",") + "\n";
+    dadosPressao.forEach(d => {
+      csv += [d.semana, d.data || '', ...gases.map(g => d[g] ?? '')].join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "controle_gases.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function salvarDados() {
+    localStorage.setItem("dadosGases", JSON.stringify(dadosPressao));
+    localStorage.setItem("dadosBackups", JSON.stringify(dadosBackups));
+    alert("Dados salvos localmente com sucesso!");
+  }
+
+  function carregarDados() {
+    const salvoGases = localStorage.getItem("dadosGases");
+    const salvoBackups = localStorage.getItem("dadosBackups");
+    if (salvoGases) {
+      try { dadosPressao = JSON.parse(salvoGases); } catch (e) { console.error(e); }
+    }
+    if (salvoBackups) {
+      try { dadosBackups = JSON.parse(salvoBackups); } catch (e) { console.error(e); }
+    }
+  }
+
+  carregarDados();
+  renderTabela();
+  renderGraficos();
+  renderTabelaBackups();
+</script>
+
+</body>
+</html>

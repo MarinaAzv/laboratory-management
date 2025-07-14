@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Controle de Estoque - Vidrarias</title>
+  <link rel="icon" href="https://cdn.glitch.global/e992bb17-2a27-4582-a4c9-26bd9a2bb6c9/favicon-16x16.png?v=1748953413949" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: NouvelR, NouvelR; font-size:10px; background: #f0f0f0; margin: 0; padding: 0; }
+    .header { background-color: black; color: white; padding: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+    .tabs button { padding: 8px 16px; margin: 5px; background: none; border: 2px solid white; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; font-family: NouvelR; }
+    .summary, .search-bar { padding: 20px; margin: 10px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .summary input, .summary select, .search-input { padding: 6px; border-radius: 5px; border: 1px solid #ccc; font-size: 12px; font-family: NouvelR; }
+    .export-btn { padding: 8px 16px; background-color: black; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: NouvelR; }
+    .container { display: flex; flex-wrap: wrap; gap: 20px; padding: 10px 20px; }
+    .column { flex: 1 1 500px; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .column h3 { text-align: center; font-size: 16px; margin-bottom: 10px; }
+    .header-row { display: grid; grid-template-columns: 1fr 80px 80px auto; font-weight: bold; margin-bottom: 10px; text-align: center; }
+    .product { display: grid; grid-template-columns: 1fr 80px 80px auto; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .qty-input { width: 60px; text-align: right; }
+    .controls { display: flex; gap: 4px; justify-content: center; }
+    .controls button { font-size: 12px; padding: 4px 8px; border: none; border-radius: 50%; cursor: pointer; }
+    .plus { background: #28a745; color: white; height: 22px; weight:22px; }
+    .minus { background: red; color: white; height: 22px; weight:22px;}
+    .remove { background: #666; color: white; height: 22px; weight:22px;}
+    .left { font-size: 20px; font-weight: bold; font-family: NouvelR; margin-right: 15px; }
+    #searchBox { margin-left: auto; }
+    @media (max-width: 768px) {
+      .container { flex-direction: column; }
+      .product { grid-template-columns: 1fr 80px 80px auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Controle de Estoque - Vidrarias</h2>
+    <div class="tabs">
+      <button onclick="window.location.href='index.html'">Reagentes</button>
+      <button onclick="window.location.href='consumiveis.html'">Consumíveis</button>
+        <button>Vidrarias</button>
+      <button onclick="window.location.href='gases.html'">Gases</button>
+    
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="left">Total Vidrarias: <span id="totalVidrarias">0</span></div>
+    <button class="export-btn" onclick="exportarExcel()">Exportar</button>
+    <button class="export-btn" onclick="salvarAlteracoes()">Salvar</button>
+    <button class="export-btn" onclick="mostrarBaixoEstoque()">Itens Críticos</button>
+    <input type="text" id="searchBox" class="search-input" placeholder="Busca">
+  </div>
+
+  <div class="summary">
+    <input id="novoNome" placeholder="Nome da vidraria">
+    <input id="novaQtd" type="number" min="0" placeholder="Quantidade">
+    <input id="novoBackup" type="number" min="0" placeholder="Qtd Backup">
+    <button class="export-btn" onclick="adicionarVidraria()">Adicionar</button>
+  </div>
+
+  <div class="container">
+    <div class="column" id="coluna1"><h3>Coluna 1</h3><div class="header-row"><div></div><div>UND</div><div>Backup</div><div></div></div></div>
+    <div class="column" id="coluna2"><h3>Coluna 2</h3><div class="header-row"><div></div><div>UND</div><div>Backup</div><div></div></div></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "estoqueVidrarias";
+    const vidrarias = [];
+
+    function carregarDoStorage() {
+      const dados = localStorage.getItem(STORAGE_KEY);
+      if (dados) {
+        try {
+          const parsed = JSON.parse(dados);
+          vidrarias.length = 0;
+          parsed.forEach(v => vidrarias.push(v));
+        } catch (e) {
+          console.error("Erro ao carregar dados:", e);
+        }
+      }
+    }
+
+    function salvarAlteracoes() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(vidrarias));
+    }
+
+    function renderVidrarias() {
+      const coluna1 = document.getElementById("coluna1");
+      const coluna2 = document.getElementById("coluna2");
+      const filtro = document.getElementById("searchBox").value.toLowerCase();
+      coluna1.innerHTML = '<h3></h3><div class="header-row"><div></div>BACKUP<div></div><div></div><div></div></div>';
+      coluna2.innerHTML = '<h3></h3><div class="header-row"><div></div>BACKUP<div></div><div></div><div></div></div>';
+
+      const listaFiltrada = filtro
+        ? vidrarias.filter(v => v.nome.toLowerCase().includes(filtro))
+        : vidrarias;
+
+      document.getElementById("totalVidrarias").textContent = listaFiltrada.length;
+
+      listaFiltrada.forEach((v, i) => {
+        const card = `
+          <div class="product">
+            <div><strong>${v.nome}</strong></div>
+            <div><input class="qty-input" type="number" value="${v.quantidade}" onchange="atualizarQtd(${i}, this.value)"></div>
+            <div><input class="qty-input" type="number" value="${v.backup}" onchange="atualizarBackup(${i}, this.value)"></div>
+            <div class="controls">
+              <button class="plus" onclick="alterarQtd(${i}, 1)">+</button>
+              <button class="minus" onclick="alterarQtd(${i}, -1)">-</button>
+              <button class="remove" onclick="removerVidraria(${i})">✖</button>
+            </div>
+          </div>`;
+        if (i % 2 === 0) {
+          coluna1.innerHTML += card;
+        } else {
+          coluna2.innerHTML += card;
+        }
+      });
+    }
+
+    function adicionarVidraria() {
+      const nome = document.getElementById("novoNome").value.trim();
+      const quantidade = parseInt(document.getElementById("novaQtd").value);
+      const backup = parseInt(document.getElementById("novoBackup").value);
+
+      if (!nome || isNaN(quantidade) || isNaN(backup)) {
+        alert("Preencha corretamente todos os campos.");
+        return;
+      }
+
+      vidrarias.push({ nome: nome.toUpperCase(), quantidade, backup });
+      salvarAlteracoes();
+      renderVidrarias();
+      document.getElementById("novoNome").value = "";
+      document.getElementById("novaQtd").value = "";
+      document.getElementById("novoBackup").value = "";
+    }
+
+    function atualizarQtd(index, valor) {
+      const novo = parseInt(valor);
+      if (!isNaN(novo) && novo >= 0) {
+        vidrarias[index].quantidade = novo;
+        salvarAlteracoes();
+      }
+    }
+
+    function atualizarBackup(index, valor) {
+      const novo = parseInt(valor);
+      if (!isNaN(novo) && novo >= 0) {
+        vidrarias[index].backup = novo;
+        salvarAlteracoes();
+      }
+    }
+
+    function alterarQtd(index, delta) {
+      vidrarias[index].quantidade = Math.max(0, vidrarias[index].quantidade + delta);
+      salvarAlteracoes();
+      renderVidrarias();
+    }
+
+    function removerVidraria(index) {
+      if (confirm(`Remover a vidraria "${vidrarias[index].nome}"?`)) {
+        vidrarias.splice(index, 1);
+        salvarAlteracoes();
+        renderVidrarias();
+      }
+    }
+
+    function exportarExcel() {
+      let csvContent = "data:text/csv;charset=utf-8,Nome,Quantidade,Backup\n";
+      vidrarias.forEach(v => {
+        csvContent += `${v.nome},${v.quantidade},${v.backup}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "estoque_vidrarias.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function mostrarBaixoEstoque() {
+      const criticos = vidrarias.filter(v => v.quantidade === 0);
+      if (criticos.length === 0) {
+        alert("Nenhuma vidraria com estoque zerado.");
+        return;
+      }
+      const lista = criticos.map(v => `- ${v.nome}`).join('\n');
+      alert("Vidrarias com estoque zerado:\n\n" + lista);
+    }
+
+    document.getElementById("searchBox").addEventListener("input", renderVidrarias);
+    carregarDoStorage();
+    renderVidrarias();
+  </script>
+</body>
+</html>
